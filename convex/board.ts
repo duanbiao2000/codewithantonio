@@ -2,6 +2,7 @@ import { v } from "convex/values";
 
 import { mutation, query } from "./_generated/server";
 
+// 定义一组图片路径
 const images = [
   "/placeholders/1.svg",
   "/placeholders/2.svg",
@@ -15,20 +16,24 @@ const images = [
   "/placeholders/10.svg",
 ];
 
+// 创建新看板
 export const create = mutation({
   args: {
     orgId: v.string(),
     title: v.string(),
   },
   handler: async (ctx, args) => {
+    // 获取当前用户身份
     const identity = await ctx.auth.getUserIdentity();
 
     if (!identity) {
       throw new Error("Unauthorized");
     }
 
+    // 随机选择一张图片
     const randomImage = images[Math.floor(Math.random() * images.length)];
 
+    // 插入新看板数据
     const board = await ctx.db.insert("boards", {
       title: args.title,
       orgId: args.orgId,
@@ -41,9 +46,11 @@ export const create = mutation({
   },
 });
 
+// 删除看板
 export const remove = mutation({
   args: { id: v.id("boards") },
   handler: async (ctx, args) => {
+    // 获取当前用户身份
     const identity = await ctx.auth.getUserIdentity();
 
     if (!identity) {
@@ -52,6 +59,7 @@ export const remove = mutation({
 
     const userId = identity.subject;
 
+    // 查询用户是否已经收藏该看板
     const existingFavorite = await ctx.db
       .query("userFavorites")
       .withIndex("by_user_board", (q) =>
@@ -60,19 +68,23 @@ export const remove = mutation({
       .unique();
 
     if (existingFavorite) {
+      // 如果已经收藏，则删除收藏记录
       await ctx.db.delete(existingFavorite._id);
     }
 
+    // 删除看板
     await ctx.db.delete(args.id);
   },
 });
 
+// 更新看板
 export const update = mutation({
   args: {
     id: v.id("boards"),
     title: v.string(),
   },
   handler: async (ctx, args) => {
+    // 获取当前用户身份
     const identity = await ctx.auth.getUserIdentity();
 
     if (!identity) {
@@ -89,6 +101,7 @@ export const update = mutation({
       throw new Error("Title cannot be longer than 60 characters");
     }
 
+    // 更新看板数据
     const board = await ctx.db.patch(args.id, {
       title: args.title,
     });
@@ -97,15 +110,18 @@ export const update = mutation({
   },
 });
 
+// 收藏看板
 export const favorite = mutation({
   args: { id: v.id("boards"), orgId: v.string() },
   handler: async (ctx, args) => {
+    // 获取当前用户身份
     const identity = await ctx.auth.getUserIdentity();
 
     if (!identity) {
       throw new Error("Unauthorized");
     }
 
+    // 获取看板数据
     const board = await ctx.db.get(args.id);
 
     if (!board) {
@@ -114,6 +130,7 @@ export const favorite = mutation({
 
     const userId = identity.subject;
 
+    // 查询用户是否已经收藏该看板
     const existingFavorite = await ctx.db
       .query("userFavorites")
       .withIndex("by_user_board", (q) =>
@@ -125,6 +142,7 @@ export const favorite = mutation({
       throw new Error("Board already favorited");
     }
 
+    // 插入收藏记录
     await ctx.db.insert("userFavorites", {
       userId,
       boardId: board._id,
@@ -135,15 +153,18 @@ export const favorite = mutation({
   },
 });
 
+// 取消收藏看板
 export const unfavorite = mutation({
   args: { id: v.id("boards") },
   handler: async (ctx, args) => {
+    // 获取当前用户身份
     const identity = await ctx.auth.getUserIdentity();
 
     if (!identity) {
       throw new Error("Unauthorized");
     }
 
+    // 获取看板数据
     const board = await ctx.db.get(args.id);
 
     if (!board) {
@@ -152,6 +173,7 @@ export const unfavorite = mutation({
 
     const userId = identity.subject;
 
+    // 查询用户是否已经收藏该看板
     const existingFavorite = await ctx.db
       .query("userFavorites")
       .withIndex(
@@ -164,15 +186,18 @@ export const unfavorite = mutation({
       throw new Error("Favorite board not found");
     }
 
+    // 删除收藏记录
     await ctx.db.delete(existingFavorite._id);
 
     return board;
   },
 });
 
+// 获取看板
 export const get = query({
   args: {id: v.id('boards')},
   handler: async (ctx,args)=>{
+    // 获取看板数据
     const board= ctx.db.get(args.id)
 
     return board;
